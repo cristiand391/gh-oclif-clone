@@ -2,6 +2,12 @@ import { flags } from "@oclif/command";
 import { Command } from "../../command";
 import cli from "cli-ux";
 
+type Repository = {
+  nameWithOwner: string;
+  description: string;
+  isPrivate: boolean;
+};
+
 export default class RepoList extends Command {
   static description = "List repositories owned by user or organization";
 
@@ -21,14 +27,41 @@ export default class RepoList extends Command {
   async run() {
     const { args, flags } = this.parse(RepoList);
 
+    const limit = flags.limit;
+    const perPage = limit > 100 ? 100 : limit;
+
+    let repos: Repository[];
+
     try {
-      const data = await this.github.graphql(RepositoryListQuery, {
+      let data = await this.github.graphql(RepositoryListQuery, {
         owner: args.owner,
-        perPage: flags.limit,
+        perPage,
       });
 
-      const repos = data.repositoryOwner.repositories.nodes;
-      const totalCount = data.repositoryOwner.repositories.totalCount;
+      const { totalCount } = data.repositoryOwner.repositories;
+
+      repos = data.repositoryOwner.repositories.nodes;
+
+      while (data.repositoryOwner.repositories.pageInfo.hasNextPage) {
+        if (repos.length == limit) {
+          break;
+        }
+
+        let { endCursor } = data.repositoryOwner.repositories.pageInfo;
+
+        data = await this.github.graphql(RepositoryListQuery, {
+          owner: args.owner,
+          perPage,
+          endCursor,
+        });
+
+        for (let repo of data.repositoryOwner.repositories.nodes) {
+          repos.push(repo);
+          if (repos.length >= limit) {
+            break;
+          }
+        }
+      }
 
       this.log(
         `\nShowing ${repos.length} of ${totalCount} repositores in @${args.owner}`
@@ -58,16 +91,20 @@ export default class RepoList extends Command {
 }
 
 const RepositoryListQuery = `
-    query RepositoryList($owner: String!, $perPage: Int!) {
-        repositoryOwner(login: $owner) {
-            repositories(first: $perPage, orderBy: { field: PUSHED_AT, direction: DESC }) {
-                nodes {
-                    nameWithOwner
-                    description
-                    isPrivate
-                }
-                totalCount
-            }
+  query RepositoryList($owner: String!, $perPage: Int!, $endCursor: String) {
+    repositoryOwner(login: $owner) {
+      repositories(first: $perPage, after: $endCursor, orderBy: { field: PUSHED_AT, direction: DESC }) {
+        nodes {
+          nameWithOwner
+          description
+          isPrivate
         }
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
+        totalCount
+      }
     }
+}
 `;
