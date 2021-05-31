@@ -2,9 +2,12 @@ import { flags } from "@oclif/command";
 import { Command } from "../../command";
 import cli from "cli-ux";
 
+const isTTY = process.stdout.isTTY;
+
 type Repository = {
   nameWithOwner: string;
   description: string;
+  visibility: string;
   isPrivate: boolean;
 };
 
@@ -63,27 +66,52 @@ export default class RepoList extends Command {
         }
       }
 
-      this.log(
-        `\nShowing ${repos.length} of ${totalCount} repositores in @${args.owner}`
-      );
+      if (isTTY) {
+        this.log(
+          `\nShowing ${repos.length} of ${totalCount} repositores in @${args.owner}\n`
+        );
 
-      cli.table(repos, {
-        nameWithOwner: {
-          header: "",
-          minWidth: 7,
-        },
-        description: {
-          header: "",
-          minWidth: 8,
-          get: (row) => (row.description === null ? "" : row.description),
-        },
-        isPrivate: {
-          header: "",
-          get: (row) => (row.isPrivate === true ? "Private" : "Public"),
-        },
-      });
+        cli.table(
+          repos,
+          {
+            nameWithOwner: {
+              minWidth: 7,
+            },
+            description: {
+              minWidth: 8,
+              get: (row) => (row.description === null ? "" : row.description),
+            },
+            visibility: {
+              get: (row) => (row.isPrivate === true ? "private" : "public"),
+            },
+          },
+          {
+            "no-header": true,
+          }
+        );
+        this.log();
+      } else {
+        let table = "";
 
-      this.log();
+        for (let repo of repos) {
+          repo.description = repo.description === null ? "" : repo.description;
+          repo.visibility = repo.isPrivate ? "private" : "public";
+
+          // Unfortunately `cli.table` always format cells in ways that hurts scriptability.
+
+          // This approach avoids all those problems by:
+          // - printing raw values without truncating them
+          // - using tabs as separators between columns
+          table = table.concat(
+            `${repo.nameWithOwner}	${repo.description}	${repo.visibility}\n`
+          );
+        }
+
+        // Remove newline character from last row.
+        table = table.slice(0, -1);
+
+        this.log(table);
+      }
     } catch (err) {
       throw err;
     }
