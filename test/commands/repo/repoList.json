@@ -1,0 +1,31 @@
+{
+  "data": {
+    "repositoryOwner": {
+      "repositories": {
+        "nodes": [
+          {
+            "nameWithOwner": "cristiand391/gh-oclif-clone",
+            "description": null,
+            "isPrivate": false
+          },
+          {
+            "nameWithOwner": "cristiand391/cli",
+            "description": "GitHub’s official command line tool",
+            "isPrivate": false
+          },
+          {
+            "nameWithOwner": "cristiand391/nextjs-loop-api-endpoints",
+            "description": null,
+            "isPrivate": false
+          }
+        ],
+        "pageInfo": {
+          "hasNextPage": true,
+          "endCursor": "Y3Vyc29yOnYyOpK0MjAyMS0wNS0xMVQxNzo1MzozOVrOEEpjng=="
+        },
+        "totalCount": 19
+      }
+    }
+  }
+}
+
